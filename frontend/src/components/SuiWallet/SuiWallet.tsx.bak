@@ -1,0 +1,248 @@
+import React, { useState, useEffect } from 'react';
+import {
+  ConnectButton,
+  useWallet,
+  addressEllipsis,
+  WalletProvider
+} from "@suiet/wallet-kit";
+import { Transaction } from "@mysten/sui/transactions";
+import { SuiClient } from '@mysten/sui/client';
+import './SuiWallet.css';
+
+const SuiWallet: React.FC = () => {
+
+
+  const wallet = useWallet();
+  console.log('Wallet:', wallet);
+  const [localChain, setLocalChain] = useState(wallet.chain);
+
+  useEffect(() => {
+    if (wallet.chain) {
+      setLocalChain(wallet.chains[0]);
+    }
+  }, [wallet.chain]);
+
+  useEffect(() => {
+    if (wallet.connected) {
+      console.log("Wallet connected:", wallet.connected);
+      console.log("Connected chain:", localChain);
+      console.log("Wallet account:", wallet.account);
+    }
+  }, [wallet.connected, localChain, wallet.account]);
+  console.log('-----------------');
+  console.log('Wallet connected:', wallet.connected);
+  console.log('Wallet account:', wallet.account);
+  console.log('Connected chain:', wallet.chains[0]);
+  console.log('Connected chain:', wallet.chain);
+
+    
+  const client = new SuiClient({ 
+    url: 'http://localhost:9000'
+  });
+  // State variables remain the same...
+  const [mintRecipient, setMintRecipient] = useState<string>('');
+  const [mintAmount, setMintAmount] = useState<string>('');
+  const [mintSourceChain, setMintSourceChain] = useState<string>('');
+  const [mintSourceAddress, setMintSourceAddress] = useState<string>('');
+  const [mintStatus, setMintStatus] = useState<string>('');
+  const [burnAmount, setBurnAmount] = useState<string>('');
+  const [burnDestinationChain, setBurnDestinationChain] = useState<string>('');
+  const [burnStatus, setBurnStatus] = useState<string>('');
+  const [ownerCapId, setOwnerCapId] = useState<string>('');
+  const [treasuryCapId, setTreasuryCapId] = useState<string>('');
+
+  // Contract details
+  const ibtTokenPackage = '0x5541c09413a210a53d85c96921ad04be54ced07ed8863332bf8c4bc951bd8457';
+  const ibtTokenModule = 'IBT';
+  const ibtTokenMintFunction = 'mint';
+  const ibtTokenBurnFunction = 'bridge_burn';
+
+  // Helper functions remain the same...
+  const encodeString = (str: string): Uint8Array => new TextEncoder().encode(str);
+  const serializeNumber = (num: number): Uint8Array => {
+    const buffer = new ArrayBuffer(8);
+    const view = new DataView(buffer);
+    view.setBigInt64(0, BigInt(num), true);
+    return new Uint8Array(buffer);
+  };
+
+  // Fetch OwnerCap and TreasuryCap IDs
+  const fetchCapabilityIds = async () => {
+    if (!wallet.account?.address) return;
+    
+    const ownerCap = "0x3d6c93b37a011b979d9a18d547950d66b393addf29bd47d172d84747bf416da3"
+    const treasuryCap = "0x370742823c3e9e9055438919dbb6cbfed3bc055afd4d685284d14732748cb1a0"
+     
+    setOwnerCapId(ownerCap);
+    setTreasuryCapId(treasuryCap);
+  };
+
+  useEffect(() => {
+    fetchCapabilityIds();
+  }, [wallet.account]);
+
+  // Transaction creator functions remain the same...
+  const createMintTxn = (): Transaction => {
+    const txn = new Transaction();
+    txn.moveCall({
+      target: `${ibtTokenPackage}::${ibtTokenModule}::${ibtTokenMintFunction}`,
+      arguments: [
+        txn.object(ownerCapId),
+        txn.object(treasuryCapId),
+        txn.pure(encodeString(mintRecipient)),
+        txn.pure(serializeNumber(Number(mintAmount))),
+        txn.pure(encodeString(mintSourceChain)),
+        txn.pure(encodeString(mintSourceAddress)),
+      ],
+    });
+    return txn;
+  };
+
+  const createBurnTxn = async (): Promise<Transaction> => {
+    if (!wallet.account?.address) {
+      throw new Error("Wallet is not connected or account address is missing.");
+    }
+
+    const coins = await client.getCoins({
+      owner: wallet.account.address,
+      coinType: `${ibtTokenPackage}::${ibtTokenModule}::IBT`,
+    });
+
+    if (!coins.data || coins.data.length === 0) {
+      throw new Error("No IBT coins found in the wallet.");
+    }
+
+    const burnAmountValue = Number(burnAmount);
+    const selectedCoin = coins.data.find((coin) => Number(coin.balance) >= burnAmountValue);
+
+    if (!selectedCoin) {
+      throw new Error("No IBT coin with sufficient balance found for the burn amount.");
+    }
+
+    const txn = new Transaction();
+    txn.moveCall({
+      target: `${ibtTokenPackage}::${ibtTokenModule}::${ibtTokenBurnFunction}`,
+      arguments: [
+        txn.object(ownerCapId),
+        txn.object(treasuryCapId),
+        txn.pure(encodeString(wallet.account.address)),
+        txn.pure(serializeNumber(burnAmountValue)),
+        txn.pure(encodeString(burnDestinationChain)),
+        txn.object(selectedCoin.coinObjectId),
+      ],
+    });
+    return txn;
+  };
+
+  // Modified transaction execution functions
+  const executeTransaction = async (txn: Transaction): Promise<any> => {
+    if (!wallet.chain?.id) {
+      throw new Error("Chain ID not available");
+    }
+
+    // Using direct transaction properties that we know exist
+    return await wallet.signAndExecuteTransaction({
+      transaction: txn,
+    } as any);
+  };
+
+  const mintIbt = async () => {
+    if (!wallet.connected) {
+      alert("Please connect your wallet first.");
+      return;
+    }
+    setMintStatus("Submitting mint transaction...");
+
+    try {
+      const txn = createMintTxn();
+      const res = await executeTransaction(txn);
+      console.log("Mint transaction response:", res);
+      setMintStatus("Mint successful!");
+    } catch (error) {
+      console.error("Mint transaction failed:", error);
+      setMintStatus(`Mint failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const burnIbt = async () => {
+    if (!wallet.connected) {
+      alert("Please connect your wallet first.");
+      return;
+    }
+    setBurnStatus("Submitting burn transaction...");
+
+    try {
+      const txn = await createBurnTxn();
+      const res = await executeTransaction(txn);
+      console.log("Burn transaction response:", res);
+      setBurnStatus("Burn successful!");
+    } catch (error) {
+      console.error("Burn transaction failed:", error);
+      setBurnStatus(`Burn failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // JSX remains the same...
+  return (
+    <div className="suiWallet">
+      <h1 className="title">Hello, Sui Wallet Kit</h1>
+      <ConnectButton />
+      {wallet.account && (
+        <>
+          <p>Connected Account: {addressEllipsis(wallet.account.address)}</p>
+          <p>Connected to: {wallet.chain?.name || 'Unknown Chain'}</p>
+        </>
+      )}
+
+      <div className="mintSection">
+        <h2>Mint IBT Tokens</h2>
+        <input
+          type="text"
+          value={mintRecipient}
+          onChange={(e) => setMintRecipient(e.target.value)}
+          placeholder="Recipient Address"
+        />
+        <input
+          type="number"
+          value={mintAmount}
+          onChange={(e) => setMintAmount(e.target.value)}
+          placeholder="Amount"
+        />
+        <input
+          type="text"
+          value={mintSourceChain}
+          onChange={(e) => setMintSourceChain(e.target.value)}
+          placeholder="Source Chain"
+        />
+        <input
+          type="text"
+          value={mintSourceAddress}
+          onChange={(e) => setMintSourceAddress(e.target.value)}
+          placeholder="Source Address"
+        />
+        <button onClick={mintIbt}>Mint</button>
+        {mintStatus && <p>{mintStatus}</p>}
+      </div>
+
+      <div className="burnSection">
+        <h2>Burn IBT Tokens</h2>
+        <input
+          type="number"
+          value={burnAmount}
+          onChange={(e) => setBurnAmount(e.target.value)}
+          placeholder="Amount"
+        />
+        <input
+          type="text"
+          value={burnDestinationChain}
+          onChange={(e) => setBurnDestinationChain(e.target.value)}
+          placeholder="Destination Chain"
+        />
+        <button onClick={burnIbt}>Burn</button>
+        {burnStatus && <p>{burnStatus}</p>}
+      </div>
+    </div>
+  );
+};
+
+export default SuiWallet;

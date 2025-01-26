@@ -1,0 +1,135 @@
+/* src/WalletCard.css */
+.walletCard {
+	border: 1px solid #ccc;
+	border-radius: 10px;
+	padding: 20px;
+	max-width: 600px;
+	margin: 20px auto;
+	text-align: center;
+	background-color: #f9f9f9;
+	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .walletCard h4 {
+	margin-bottom: 20px;
+	color: #333;
+  }
+  
+  .accountDisplay,
+  .balanceDisplay,
+  .ownershipStatus {
+	margin: 15px 0;
+  }
+  
+  .balanceDisplay h3,
+  .accountDisplay h3,
+  .ownershipStatus p {
+	color: #555;
+  }
+  
+  .mintSection,
+  .burnSection {
+	margin-top: 30px;
+	padding: 15px;
+	border-top: 1px solid #ddd;
+  }
+  
+  .mintSection h4,
+  .burnSection h4 {
+	margin-bottom: 15px;
+	color: #333;
+  }
+  
+  .mintSection form,
+  .burnSection form {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+  }
+  
+  .mintSection form div,
+  .burnSection form div {
+	margin-bottom: 10px;
+	width: 100%;
+  }
+  
+  .mintSection label,
+  .burnSection label {
+	display: block;
+	margin-bottom: 5px;
+	color: #555;
+  }
+  
+  .mintSection input,
+  .burnSection input {
+	width: 100%;
+	padding: 8px;
+	box-sizing: border-box;
+  }
+  
+  .mintSection button,
+  .burnSection button {
+	padding: 10px 20px;
+	font-size: 16px;
+	cursor: pointer;
+	border: none;
+	border-radius: 5px;
+	background-color: #28a745; /* Mint button green */
+	color: white;
+	transition: background-color 0.3s ease;
+  }
+  
+  .mintSection button:hover,
+  .burnSection button:hover {
+	background-color: #218838;
+  }
+  
+  .burnSection button {
+	background-color: #dc3545; /* Burn button red */
+  }
+  
+  .burnSection button:hover {
+	background-color: #c82333;
+  }
+  
+  .mintStatus,
+  .burnStatus {
+	margin-top: 10px;
+	font-weight: bold;
+  }
+  
+  .mintStatus.success,
+  .burnStatus.success {
+	color: green;
+  }
+  
+  .mintStatus.error,
+  .burnStatus.error {
+	color: red;
+  }
+  
+  .mintStatus.info,
+  .burnStatus.info {
+	color: orange;
+  }
+  
+  .error {
+	color: red;
+	margin-top: 20px;
+  }
+  
+  button {
+	padding: 10px 20px;
+	font-size: 16px;
+	cursor: pointer;
+	border: none;
+	border-radius: 5px;
+	background-color: #007bff;
+	color: white;
+	transition: background-color 0.3s ease;
+  }
+  
+  button:hover {
+	background-color: #0056b3;
+  }
+  
